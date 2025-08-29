@@ -74,6 +74,9 @@ public:
                        int column, const QModelIndex &parent) const override;
   bool dropMimeData(const QMimeData *data, Qt::DropAction action, int row,
                     int column, const QModelIndex &parent) override;
+  QModelIndex findIndexByPath(const QString& path) const;
+  QString remoteName() const { return mRemote; }
+  QString remoteType() const { return mRemoteType; }
 
 signals:
   void getIcon(Item *item, const QPersistentModelIndex &index);
@@ -83,6 +86,8 @@ private:
   Item *mRoot;
 
   QString mRemote;
+  QString mRemoteType;
+  QString fetchRemoteType(const QString &remoteName) const;
 
   QHash<QString, QIcon> mLoadedIcons;
 

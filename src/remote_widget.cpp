@@ -67,6 +67,61 @@ QString root = isLocal ? "/" : QString();
   ui.tree->setModel(model);
   QTimer::singleShot(0, ui.tree, SLOT(setFocus()));
 
+  //add here
+  ui.path->setReadOnly(false);  // Cho phép edit
+  
+  // Tạo nút Go
+//   QPushButton* goButton = new QPushButton("Go", this);
+  
+  // Layout chứa path + Go (nếu bạn có container để đặt)
+//   QHBoxLayout* pathLayout = new QHBoxLayout();
+//   pathLayout->addWidget(ui.path);
+//   pathLayout->addWidget(goButton);
+  // Nếu không có ui.pathWidget thì bỏ setLayout, chỉ dùng layout ở nơi phù hợp
+  
+  // Sự kiện click nút Go
+  connect(ui.buttonGo, &QPushButton::clicked, this, [=]() {
+      QString path = ui.path->text().trimmed();
+      if (path.isEmpty()) return;
+  
+      QModelIndex index = model->findIndexByPath(path);
+      if (index.isValid()) {
+          ui.tree->selectionModel()->select(index,
+              QItemSelectionModel::SelectCurrent | QItemSelectionModel::Rows);
+          ui.tree->expand(index);
+      } else {
+	  if (model->remoteType().startsWith("internetarchive", Qt::CaseInsensitive)) {
+	    // Xóa node cũ
+            if (model->rowCount(QModelIndex()) > 0) {
+                model->removeRows(0, model->rowCount(QModelIndex()), QModelIndex());
+            }
+            // Nếu không tìm thấy, tạo root mới và load
+            QString name = path.section('/', 0, 0); // lấy phần đầu làm tên hiển thị
+            QModelIndex newIndex = model->addRoot(name, path);
+  
+            // Gọi load() qua refresh
+            model->refresh(newIndex);
+  
+            // Chọn và expand node mới
+            ui.tree->selectionModel()->select(
+                newIndex, QItemSelectionModel::SelectCurrent | QItemSelectionModel::Rows);
+            ui.tree->expand(newIndex);
+	  } else {
+		QMessageBox::warning(
+			this,
+			"Error",
+			QString("Path not found for remote: %1").arg(model->remoteType())
+		);
+	  }
+      }
+  });
+  
+  // Sự kiện nhấn Enter trong ô path → giả lập click Go
+  connect(ui.path, &QLineEdit::returnPressed, this, [=]() {
+      ui.buttonGo->click();
+  });
+
+
   QObject::connect(model, &QAbstractItemModel::layoutChanged, this, [=]() {
     ui.tree->header()->setSectionResizeMode(0, QHeaderView::Stretch);
     ui.tree->resizeColumnToContents(1);
