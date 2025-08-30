@@ -532,7 +532,7 @@ void ItemModel::load(const QPersistentModelIndex &parentIndex, Item *parent) {
                            << GetRcloneConf()
                            << GetDriveSharedWithMe()
                            << GetShowHidden()
-                           << "--max-depth" << "1"   // 👈 thêm dòng này
+                           << "--max-depth" << "1"
                            << GetDefaultRcloneOptionsList()
                            << mRemote + ":" + parent->path.path(),
              QIODevice::ReadOnly);
@@ -544,15 +544,21 @@ void ItemModel::load(const QPersistentModelIndex &parentIndex, Item *parent) {
              QIODevice::ReadOnly);
 }
 
+/**
+ * @brief Fetch the type of a remote from rclone config file
+ *
+ * @param remoteName the name of remote to fetch
+ * @return the type of the remote if found, otherwise empty string
+ */
 QString ItemModel::fetchRemoteType(const QString &remoteName) const {
     QProcess process;
 
-    // Tạo danh sách tham số giống style của lsl/lsd
+    // Create a list of arguments in the same style as lsl/lsd
     QStringList args;
     args << "config" << "show"
          << remoteName + ":"; // remote cần lấy type
 
-    // Nếu muốn dùng đúng file config người dùng đã chọn
+    // If you want to use the correct config file that the user has chosen
 	process.start(GetRclone(), args, QIODevice::ReadOnly);
 	process.waitForFinished();
 
@@ -608,8 +614,16 @@ void ItemModel::sort(const QModelIndex &parent, Item *item) {
   emit layoutChanged(parents, QAbstractItemModel::VerticalSortHint);
 }
 
+/**
+ * @brief Finds the QModelIndex corresponding to the given @p targetPath
+ *
+ * Traverses the model recursively and returns the first matching index.
+ * If no index is found, an invalid QModelIndex is returned.
+ *
+ * @param[in] targetPath The path to search for
+ * @return The QModelIndex matching the path, or an invalid QModelIndex
+ */
 QModelIndex ItemModel::findIndexByPath(const QString& targetPath) const {
-    // Duyệt đệ quy qua tất cả index
     QModelIndexList indices;
     std::function<void(const QModelIndex&)> traverse;
 
@@ -629,7 +643,6 @@ QModelIndex ItemModel::findIndexByPath(const QString& targetPath) const {
         }
     };
 
-    // Bắt đầu từ root
     for (int r = 0; r < rowCount(QModelIndex()); ++r) {
         traverse(index(r, 0, QModelIndex()));
     }
