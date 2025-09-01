@@ -1,4 +1,9 @@
 # Change Log
+## [1.9.0][1.8.0] - 2025-08-29
+-   NEW: now user can jump to any absolute path when inside the remote manually 
+-   FIXED: internet archive now works normally
+-   FIXED: temporarily change cmake requirement to build the app
+
 ## [1.8.0][1.8.0] - 2020-02-17
 -   NEW: http(s) proxy configuration for rclone
 -   NEW: remotes icons size option selector

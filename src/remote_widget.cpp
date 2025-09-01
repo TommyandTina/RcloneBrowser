@@ -67,6 +67,51 @@ QString root = isLocal ? "/" : QString();
   ui.tree->setModel(model);
   QTimer::singleShot(0, ui.tree, SLOT(setFocus()));
 
+  ui.path->setReadOnly(false);  // edit allowed
+  
+  // create go button event
+  connect(ui.buttonGo, &QPushButton::clicked, this, [=]() {
+      QString path = ui.path->text().trimmed();
+      if (path.isEmpty()) return;
+  
+      QModelIndex index = model->findIndexByPath(path);
+      if (index.isValid()) {
+          ui.tree->selectionModel()->select(index,
+              QItemSelectionModel::SelectCurrent | QItemSelectionModel::Rows);
+          ui.tree->expand(index);
+      } else {
+	  if (model->remoteType().startsWith("internetarchive", Qt::CaseInsensitive)) {
+	    // delete current root
+            if (model->rowCount(QModelIndex()) > 0) {
+                model->removeRows(0, model->rowCount(QModelIndex()), QModelIndex());
+            }
+            // then add new root
+            QString name = path.section('/', 0, 0); // add / to the path
+            QModelIndex newIndex = model->addRoot(name, path);
+  
+            // then refresh it
+            model->refresh(newIndex);
+  
+            // select and expand it
+            ui.tree->selectionModel()->select(
+                newIndex, QItemSelectionModel::SelectCurrent | QItemSelectionModel::Rows);
+            ui.tree->expand(newIndex);
+	  } else {
+		QMessageBox::warning(
+			this,
+			"Error",
+			QString("Path not found for remote: %1").arg(model->remoteType())
+		);
+	  }
+      }
+  });
+  
+  // create event for enter key in path edit beside go button
+  connect(ui.path, &QLineEdit::returnPressed, this, [=]() {
+      ui.buttonGo->click();
+  });
+
+
   QObject::connect(model, &QAbstractItemModel::layoutChanged, this, [=]() {
     ui.tree->header()->setSectionResizeMode(0, QHeaderView::Stretch);
     ui.tree->resizeColumnToContents(1);

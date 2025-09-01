@@ -15,18 +15,18 @@ if %BOTH% == 1  (
 )
 
 set ARCH=%1
-call "c:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" %ARCH%
+call "c:\Program Files (x86)\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat" %ARCH%
 
 if "%ARCH%" == "x86" (
-set QT=C:\Qt\5.13.2\msvc2017\
+set QT=C:\Qt\5.15.2\msvc2019\
 ) else (
-set QT=C:\Qt\5.13.2\msvc2017_64\
+set QT=C:\Qt\5.15.2\msvc2019_64\
 )
 set PATH=%QT%\bin;%PATH%
 
 set ROOT="%~dp0.."
 set BUILD="%~dp0..\build\build\release"
-set CMAKEGEN="Visual Studio 16 2019"
+set CMAKEGEN="Visual Studio 17 2022"
 
 set /p VERSION=<"%ROOT%\VERSION"
 

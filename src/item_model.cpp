@@ -79,7 +79,7 @@ private:
 };
 
 ItemModel::ItemModel(IconCache *icons, const QString &remote, QObject *parent)
-    : QAbstractItemModel(parent), mRemote(remote),
+    : QAbstractItemModel(parent), mRemote(remote), mRemoteType(fetchRemoteType(remote)),
       mFixedFont(QFontDatabase::systemFont(QFontDatabase::FixedFont)),
       mRegExpFolder(
           R"(^[\d-]+ (\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d) \s*[\d-]+ (.+)$)"),
@@ -528,8 +528,12 @@ void ItemModel::load(const QPersistentModelIndex &parentIndex, Item *parent) {
   UseRclonePassword(lsl);
 
   lsd->start(GetRclone(),
-             QStringList() << "lsd" << GetRcloneConf() << GetDriveSharedWithMe()
-                           << GetShowHidden() << GetDefaultRcloneOptionsList()
+             QStringList() << "lsd"
+                           << GetRcloneConf()
+                           << GetDriveSharedWithMe()
+                           << GetShowHidden()
+                           << "--max-depth" << "1"
+                           << GetDefaultRcloneOptionsList()
                            << mRemote + ":" + parent->path.path(),
              QIODevice::ReadOnly);
   lsl->start(GetRclone(),
@@ -538,6 +542,35 @@ void ItemModel::load(const QPersistentModelIndex &parentIndex, Item *parent) {
                            << "1" << GetDefaultRcloneOptionsList()
                            << mRemote + ":" + parent->path.path(),
              QIODevice::ReadOnly);
+}
+
+/**
+ * @brief Fetch the type of a remote from rclone config file
+ *
+ * @param remoteName the name of remote to fetch
+ * @return the type of the remote if found, otherwise empty string
+ */
+QString ItemModel::fetchRemoteType(const QString &remoteName) const {
+    QProcess process;
+
+    // Create a list of arguments in the same style as lsl/lsd
+    QStringList args;
+    args << "config" << "show"
+         << remoteName + ":"; // remote cần lấy type
+
+    // If you want to use the correct config file that the user has chosen
+	process.start(GetRclone(), args, QIODevice::ReadOnly);
+	process.waitForFinished();
+
+    QString output = process.readAllStandardOutput();
+    QString remoteType;
+    for (const QString &line : output.split('\n')) {
+        if (line.trimmed().startsWith("type")) {
+            remoteType = line.section('=', 1).trimmed();
+            break;
+        }
+    }
+    return remoteType;
 }
 
 void ItemModel::sortRecursive(Item *item, const ItemSorter &sorter) {
@@ -579,4 +612,40 @@ void ItemModel::sort(const QModelIndex &parent, Item *item) {
   changePersistentIndexList(oldList, newList);
 
   emit layoutChanged(parents, QAbstractItemModel::VerticalSortHint);
+}
+
+/**
+ * @brief Finds the QModelIndex corresponding to the given @p targetPath
+ *
+ * Traverses the model recursively and returns the first matching index.
+ * If no index is found, an invalid QModelIndex is returned.
+ *
+ * @param[in] targetPath The path to search for
+ * @return The QModelIndex matching the path, or an invalid QModelIndex
+ */
+QModelIndex ItemModel::findIndexByPath(const QString& targetPath) const {
+    QModelIndexList indices;
+    std::function<void(const QModelIndex&)> traverse;
+
+    traverse = [&](const QModelIndex& parent) {
+        for (int r = 0; r < rowCount(parent); ++r) {
+            QModelIndex idx = index(r, 0, parent);
+            QString currentPath = this->path(idx).path();
+
+            if (currentPath == targetPath) {
+                indices.append(idx);
+                return;
+            }
+
+            if (isFolder(idx)) {
+                traverse(idx);
+            }
+        }
+    };
+
+    for (int r = 0; r < rowCount(QModelIndex()); ++r) {
+        traverse(index(r, 0, QModelIndex()));
+    }
+
+    return indices.size() > 0 ? indices.first() : QModelIndex();
 }
